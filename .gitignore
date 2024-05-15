@@ -1,0 +1,8 @@
+#忽略编译结果
+
+Listings/
+Objects/
+
+#忽略隐私内容
+
+*.uvguix.*
