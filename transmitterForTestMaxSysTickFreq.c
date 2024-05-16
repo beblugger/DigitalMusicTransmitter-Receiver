@@ -13,7 +13,9 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
 
-#define UARTMBaseFreq 5000
+#include "customizedUARTIO.h"
+
+#define UARTMBaseFreq 1
 #define SysTickResloution 120
 
 static uint32_t SystemClkFrequency = 0;
@@ -21,16 +23,19 @@ static uint32_t SystemClkFrequency = 0;
 static volatile int16_t activatedLength = 0;
 static volatile uint16_t counterSinceLastUpdateK0 = 0;
 
-static volatile uint16_t SysTickP0PulseWidth = 0;
-static volatile bool GPIOK1State = 0, GPIOK1Backup = 0, GPIOP0State = 0;
+// static volatile uint16_t SysTickP0PulseWidth = 0;
+// static volatile bool GPIOK1State = 0, GPIOK1Backup = 0, GPIOP0State = 0;
+
+volatile static VUARTStreamBuffer txBuffer;
 
 void InitGPIO(void);
 void InitSysTick(uint32_t frequency);
 void InitUART(void);
 void SysTick_Handler(void);
 
-static uint8_t WhatRxReceiverd[1024];
+static uint8_t WhatRxReceiverd[16];
 static uint16_t WhatRxReceiverdIndex = 0;
+static uint8_t counter = 0;
 
 int main(void)
 {
@@ -41,51 +46,85 @@ int main(void)
     InitUART();
     InitSysTick(UARTMBaseFreq * SysTickResloution);
 
-    uint8_t counter = 0;
+    VUARTInitTransmitter(&txBuffer, 1, 1);
     while (true)
     {
-        while (UARTCharsAvail(UART2_BASE))
+        while (UARTCharsAvail(UART2_BASE) && WhatRxReceiverdIndex < 16)
         {
             WhatRxReceiverd[WhatRxReceiverdIndex] = UARTCharGet(UART2_BASE);
             WhatRxReceiverdIndex++;
         }
-        if (!UARTBusy(UART2_BASE))
+        // if (!UARTBusy(UART2_BASE))
+        // {
+        //     UARTCharPut(UART2_BASE, counter);
+        //     counter++;
+        //     UARTCharPut(UART2_BASE, counter);
+        //     counter++;
+        // }
+        if (VUARTIsAbleToWriteToBuffer(&txBuffer))
         {
-            UARTCharPut(UART2_BASE, counter);
-            counter++;
-            UARTCharPut(UART2_BASE, counter);
+            VUARTWriteByteToTransmitter(&txBuffer, 0x37);
             counter++;
         }
     }
     return 0;
 }
 
+static volatile uint16_t SysTickPhaseCounter = 0;
+static volatile bool bitWritingtoP0 = 1;
+static volatile uint16_t debugCounter = 0;
+
 void SysTick_Handler(void)
 {
-    // convert UART -> UARTM, K1 -> P0
-    uint16_t SysTickP0PulseWidthMax;
-    GPIOK1Backup = GPIOK1State;
-    GPIOK1State = GPIOPinRead(GPIO_PORTK_BASE, GPIO_PIN_1);
-    if (GPIOK1Backup != GPIOK1State)
+    // // convert UART -> UARTM, K1 -> P0
+    // uint16_t SysTickP0PulseWidthMax;
+    // GPIOK1Backup = GPIOK1State;
+    // GPIOK1State = GPIOPinRead(GPIO_PORTK_BASE, GPIO_PIN_1);
+    // if (GPIOK1Backup != GPIOK1State)
+    // {
+    //     // Sync with edges of K1
+    //     if (GPIOP0State && SysTickP0PulseWidth > 4)
+    //     {
+    //         SysTickP0PulseWidthMax = ((GPIOK1State ^ GPIOP0State) ? SysTickResloution / 3 : SysTickResloution * 2 / 3);
+    //         SysTickP0PulseWidth = 0;
+    //     }
+    //     else
+    //     {
+    //         SysTickP0PulseWidthMax = SysTickResloution;
+    //     }
+    // }
+    // SysTickP0PulseWidth++;
+    // if (SysTickP0PulseWidth >= SysTickP0PulseWidthMax)
+    // {
+    //     SysTickP0PulseWidth = 0;
+    //     GPIOP0State = !GPIOP0State;
+    //     GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, GPIOP0State ? GPIO_PIN_0 : 0);
+    // }
+
+    // convert UART -> UARTM, txBuffer -> P0
+
+    if (SysTickPhaseCounter >= SysTickResloution)
     {
-        // Sync with edges of K1
-        if (GPIOP0State && SysTickP0PulseWidth > 4)
+        SysTickPhaseCounter = 0;
+        debugCounter++;
+        bitWritingtoP0 = VUARTReadBitFromTransmitter(&txBuffer);
+        GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, 0);
+    }
+    else if (SysTickPhaseCounter == SysTickResloution * 2 / 3)
+    {
+        if (bitWritingtoP0)
         {
-            SysTickP0PulseWidthMax = ((GPIOK1State ^ GPIOP0State) ? SysTickResloution / 3 : SysTickResloution * 2 / 3);
-            SysTickP0PulseWidth = 0;
-        }
-        else
-        {
-            SysTickP0PulseWidthMax = SysTickResloution;
+            GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, 0);
         }
     }
-    SysTickP0PulseWidth++;
-    if (SysTickP0PulseWidth >= SysTickP0PulseWidthMax)
+    else if (SysTickPhaseCounter == SysTickResloution / 3)
     {
-        SysTickP0PulseWidth = 0;
-        GPIOP0State = !GPIOP0State;
-        GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, GPIOP0State ? GPIO_PIN_0 : 0);
+        if (!bitWritingtoP0)
+        {
+            GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, 0);
+        }
     }
+    SysTickPhaseCounter++;
 
     // convert UARTM -> UART, P1 -> K0
 
