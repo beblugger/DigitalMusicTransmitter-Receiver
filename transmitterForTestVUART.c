@@ -10,19 +10,25 @@
 #include "driverlib/uart.h"    //UART相关宏定义
 #include "driverlib/interrupt.h"
 #include "inc/hw_ints.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/systick.h"
+
+#define testFrequency 1000000
 
 // #include "customizedUARTIO.h"
 
 static uint16_t i = 0;
 static uint32_t SystemClkFrequency = 0;
 
-void InitGPIO();
-void InitSysTick(int frequency);
-void InitUART();
+void InitGPIO(void);
+void InitSysTick(uint32_t frequency);
+void InitUART(void);
 void SysTick_Handler(void);
 
 // VUARTTransmitter mainTransmitter;
-// volatile
+static volatile uint32_t testconuter = 0;
+static volatile uint8_t ledState = 0;
+static uint32_t gottenFrequency = 0;
 
 int main(void)
 {
@@ -30,32 +36,28 @@ int main(void)
     SystemClkFrequency = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ | SYSCTL_OSC_MAIN |
                                              SYSCTL_USE_PLL | SYSCTL_CFG_VCO_480),
                                             120000000);
-    InitSysTick(6000);
-    VUARTInitTransmitter(&mainTransmitter, 1, 1);
 
+    gottenFrequency = SysCtlClockGet();
+    InitSysTick(testFrequency);
     while (true)
-    {
-        if (VUARTIsAbleToWriteToBuffer(&mainTransmitter))
-        {
-            VUARTWriteToBuffer(&mainTransmitter, i);
-            i++;
-            i &= 0xff;
-        }
-    }
+        ;
+
     return 0;
 }
 
 void SysTick_Handler(void)
 {
-    if (VUARTIsBufferEmpty(mainTransmitter.head, mainTransmitter.tail))
+    testconuter++;
+    if (testconuter >= testFrequency / 2)
     {
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
-        VUARTReadFromBuffer(&mainTransmitter);
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0);
+        testconuter = 0;
+        ledState ^= GPIO_PIN_0;
+
+        GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_0, ledState);
     }
 }
 
-void InitGPIO()
+void InitGPIO(void)
 {
     // Enable the GPIO port that is used for the on-board buzzer.
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
@@ -67,13 +69,21 @@ void InitGPIO()
     // Enable the GPIO pin for the buzzer (PF3).  Set the direction as output, and
     // enable the GPIO pin for digital function.
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPION);
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPION))
+        ;
+
+    GPIOPinTypeGPIOOutput(GPIO_PORTN_BASE, GPIO_PIN_0 | GPIO_PIN_1);
 }
 
-void InitSysTick(int frequency)
+void InitSysTick(uint32_t frequency)
 {
     // Set up the period for the SysTick timer.  The SysTick timer period will
     // be equal to the system clock / frequency.
-    SysTickPeriodSet(SysCtlClockGet() / frequency);
+
+    // SysCtlClockGet is for TM4C123X only, it's not available for TM4C129X
+    SysTickPeriodSet(SystemClkFrequency / frequency);
 
     // Enable SysTick.
     SysTickEnable();
@@ -81,7 +91,7 @@ void InitSysTick(int frequency)
     SysTickIntEnable();
 }
 
-void InitUART()
+void InitUART(void)
 {
     // Enable the GPIO port that is used for the on-board UART.
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);

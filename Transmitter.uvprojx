@@ -10,6 +10,7 @@
       <TargetName>Target 1</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
+      <pCCUsed>6210000::V6.21::ARMCLANG</pCCUsed>
       <uAC6>1</uAC6>
       <TargetOption>
         <TargetCommonOption>
@@ -382,6 +383,13 @@
       <Groups>
         <Group>
           <GroupName>Source Group 1</GroupName>
+          <Files>
+            <File>
+              <FileName>transmitterForTestMaxSysTickFreq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\transmitterForTestMaxSysTickFreq.c</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>Driver Library</GroupName>
