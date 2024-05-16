@@ -8,6 +8,14 @@
 #define BUFFER_ALIAS_SIZE (BUFFER_SIZE * 8)
 #define BUFFER_ALIAS_SIZE_MASK (BUFFER_ALIAS_SIZE - 1)
 
+// VUART 状态标志
+#define STATE_WAITING_START 0b10000000
+#define STATE_READING_DATA 0b01000000
+#define STATE_READING_PARITY 0b00100000
+#define STATE_READING_STOP 0b00010000
+#define STATE_ERROR_PARITY 0b00001000
+#define STATE_CONNECTION_LOST 0b00000000
+
 // 干扰很大，必须要连续收到32个1才能认定发射设备存在
 // 另外，连续4次奇偶校验失败或者连续32位检测不到起始位或者停止位，就认为通信中断
 
@@ -16,15 +24,8 @@ typedef struct
 {
     uint8_t buffer[BUFFER_SIZE];
     uint32_t *bufferAlias;
-    uint32_t head; // bufferAlias的头指针
-    uint32_t tail; // bufferAlias的尾指针
-    uint8_t stopBits;
-    uint8_t parityBits;
-} virtualUART_Transmitter;
-
-typedef struct
-{
-    uint8_t buffer[BUFFER_SIZE];
+    uint32_t head;
+    uint32_t tail;
     uint8_t state;
     // state:
     // 0b10000xxx: 通信正常，等待起始位
@@ -37,13 +38,10 @@ typedef struct
     int8_t connectionHealth; // 通信健康状态,[0,31], Only at 31, the connection will be enabled
 #define CONNECTION_HEALTH_THRESHOLD 31
     uint8_t errorLevel;
-    uint32_t *bufferAlias;
-    uint32_t head;
-    uint32_t tail;
     uint8_t stopBits;
     uint8_t parityBits;
-    uint8_t parity = 0;
-} virtualUART_Receiver;
+    uint8_t parity;
+} VUARTStreamBuffer;
 
 #define BIT_BAND_BASE 0x22000000
 #define SRAM_MASK 0x00ffffff
@@ -52,25 +50,25 @@ typedef struct
 #define GET_BIT_BAND_ADDR_FROM_ALIAS(alias) (uint32_t *)(((uint32_t)(alias) & SRAM_MASK) >> 5)
 
 // Function declarations
-void virtualUART_InitTransmitter(virtualUART_Transmitter *tx, uint8_t stopBits, uint8_t parityBits);
-void virtualUART_InitReceiver(virtualUART_Receiver *rx, uint8_t stopBits, uint8_t parityBits);
-void virtualUART_WriteByteToTransmitter(virtualUART_Transmitter *tx, uint8_t data);
-uint8_t virtualUART_ReadBitFromTransmitter(virtualUART_Transmitter *tx);
-uint8_t virtualUART_ReadByteFromReceiver(virtualUART_Receiver *rx);
-void virtualUART_WriteBitToReceiver(virtualUART_Receiver *rx, int bit);
+void VUARTInitTransmitter(VUARTStreamBuffer *tx, uint8_t stopBits, uint8_t parityBits);
+void VUARTInitReceiver(VUARTStreamBuffer *rx, uint8_t stopBits, uint8_t parityBits);
+void VUARTWriteByteToTransmitter(VUARTStreamBuffer *tx, uint8_t data);
+uint8_t VUARTReadBitFromTransmitter(VUARTStreamBuffer *tx);
+uint8_t VUARTReadByteFromReceiver(VUARTStreamBuffer *rx);
+void VUARTWriteBitToReceiver(VUARTStreamBuffer *rx, int bit);
 static uint32_t *GetBitBandAlias(uint32_t address, uint8_t bit);
 static uint32_t *GetAddressFromBitBandAlias(uint32_t *alias);
-inline bool virtualUART_IsBufferFull(int head, int tail);
-inline bool virtualUART_IsBufferEmpty(int head, int tail);
-uint32_t virtualUART_GETBufferRemainingSize(int head, int tail);
+inline bool VUARTIsBufferFull(int head, int tail);
+inline bool VUARTIsBufferEmpty(int head, int tail);
+uint32_t VUARTGETBufferRemainingSize(int head, int tail);
 static uint8_t calculateParity(uint8_t byte);
 static inline void aliasPointerIncrease(uint32_t *pointer);
 static inline void aliasPointerDecrease(uint32_t *pointer);
-inline bool virtualUART_IsAbleToWriteToBuffer(virtualUART_Transmitter *tx);
-inline bool virtualUART_IsAbleToReadFromBuffer(virtualUART_Receiver *rx);
+inline bool VUARTIsAbleToWriteToBuffer(VUARTStreamBuffer *tx);
+inline bool VUARTIsAbleToReadByteFromBuffer(VUARTStreamBuffer *rx);
 
 // 初始化发射器
-void virtualUART_InitTransmitter(virtualUART_Transmitter *tx, uint8_t stopBits, uint8_t parityBits)
+void VUARTInitTransmitter(VUARTStreamBuffer *tx, uint8_t stopBits, uint8_t parityBits)
 {
     if (parityBits > 1 || stopBits < 1 || stopBits >= 8)
     {
@@ -84,7 +82,7 @@ void virtualUART_InitTransmitter(virtualUART_Transmitter *tx, uint8_t stopBits, 
 }
 
 // 初始化接收器
-void virtualUART_InitReceiver(virtualUART_Receiver *rx, uint8_t stopBits, uint8_t parityBits)
+void VUARTInitReceiver(VUARTStreamBuffer *rx, uint8_t stopBits, uint8_t parityBits)
 {
     if (parityBits > 1 || stopBits < 1 || stopBits >= 8)
     {
@@ -101,9 +99,9 @@ void virtualUART_InitReceiver(virtualUART_Receiver *rx, uint8_t stopBits, uint8_
 }
 
 // 发射器：向缓冲区写入数据，以字节为单位
-void virtualUART_WriteByteToTransmitter(virtualUART_Transmitter *tx, uint8_t data)
+void VUARTWriteByteToTransmitter(VUARTStreamBuffer *tx, uint8_t data)
 {
-    if (virtualUART_GETBufferRemainingSize(tx->head, tx->tail) < 9 + tx->stopBits + tx->parityBits)
+    if (VUARTGETBufferRemainingSize(tx->head, tx->tail) < 9 + tx->stopBits + tx->parityBits)
     {
         // 处理缓冲区满的情况
         return;
@@ -137,9 +135,9 @@ void virtualUART_WriteByteToTransmitter(virtualUART_Transmitter *tx, uint8_t dat
 }
 
 // 发射器：从缓冲区读出数据，以比特为单位
-uint8_t virtualUART_ReadBitFromTransmitter(virtualUART_Transmitter *tx)
+uint8_t VUARTReadBitFromTransmitter(VUARTStreamBuffer *tx)
 {
-    if (virtualUART_IsBufferEmpty(tx->head, tx->tail))
+    if (VUARTIsBufferEmpty(tx->head, tx->tail))
     {
         // When no signal is transmitting, UART requires a high level signal
         return 1;
@@ -150,31 +148,16 @@ uint8_t virtualUART_ReadBitFromTransmitter(virtualUART_Transmitter *tx)
 }
 
 // 接收器：从缓冲区读出数据，以字节为单位
-uint8_t virtualUART_ReadByteFromReceiver(virtualUART_Receiver *rx)
+uint8_t VUARTReadByteFromReceiver(VUARTStreamBuffer *rx)
 {
-    if (virtualUART_GETBufferRemainingSize(rx->head, rx->tail) < 8)
+    static uint32_t cursor = 0;
+    cursor = rx->tail;
+    if (!VUARTIsAbleToReadByteFromBuffer(rx))
     {
         // 处理缓冲区空的情况
         return 0;
     }
-    uint8_t data = rx->buffer[(rx->head) >> 3];
-    rx->tail = (rx->tail + 8) & BUFFER_ALIAS_SIZE_MASK;
-    return data;
-}
-
-// 接收器：向缓冲区写入数据，以比特为单位，自行检查是否有合法的信号和合法的数据
-/**
- * @brief Writes a bit to the UART receiver.
- *
- * This function is responsible for handling the reception of bits in the UART receiver.
- * It updates the receiver's state based on the received bit and performs error checking.
- *
- * @param rx A pointer to the virtualUART_Receiver structure representing the receiver.
- * @param bit The bit to be written to the receiver.
- */
-void virtualUART_WriteBitToReceiver(virtualUART_Receiver *rx, int bit)
-{
-    // errorLevel：Add all the errors in a frame, and it is processed and cleared after a frame
+    /*// errorLevel：Add all the errors in a frame, and it is processed and cleared after a frame
 
     if (rx->state & 0b10000000)
     {
@@ -277,7 +260,27 @@ void virtualUART_WriteBitToReceiver(virtualUART_Receiver *rx, int bit)
     {
         // Invaild state
         // todo: Error handling
+    }*/
+    if (VUARTGETBufferRemainingSize(rx->head, rx->tail) < 8)
+    {
+        // 处理缓冲区空的情况
+        return 0;
     }
+    uint8_t data = rx->buffer[(rx->head) >> 3];
+    rx->tail = (rx->tail + 8) & BUFFER_ALIAS_SIZE_MASK;
+    return data;
+}
+
+// 接收器：向缓冲区写入数据，以比特为单位，自行检查是否有合法的信号和合法的数据
+void VUARTWriteBitToReceiver(VUARTStreamBuffer *rx, int bit)
+{
+    if (VUARTIsBufferFull(rx->head, rx->tail))
+    {
+        // Handle the buffer full condition
+        return;
+    }
+    rx->bufferAlias[rx->head] = bit;
+    aliasPointerIncrease(&rx->head);
 }
 
 // 位带别名映射
@@ -292,19 +295,19 @@ static inline uint32_t *GetAddressFromBitBandAlias(uint32_t *alias)
 }
 
 // 检查缓冲区是否为满
-inline bool virtualUART_IsBufferFull(int head, int tail)
+inline bool VUARTIsBufferFull(int head, int tail)
 {
     return ((head + 1) & BUFFER_ALIAS_SIZE_MASK) == tail;
 }
 
 // 检查缓冲区是否为空
-inline bool virtualUART_IsBufferEmpty(int head, int tail)
+inline bool VUARTIsBufferEmpty(int head, int tail)
 {
     return head == tail;
 }
 
 // 获取缓冲区剩余大小, 以bit为单位
-inline uint32_t virtualUART_GETBufferRemainingSize(int head, int tail)
+inline uint32_t VUARTGETBufferRemainingSize(int head, int tail)
 {
     if (head >= tail)
     {
@@ -313,14 +316,14 @@ inline uint32_t virtualUART_GETBufferRemainingSize(int head, int tail)
     return (tail - head);
 }
 
-inline bool virtualUART_IsAbleToWriteToBuffer(virtualUART_Transmitter *tx)
+inline bool VUARTIsAbleToWriteToBuffer(VUARTStreamBuffer *tx)
 {
-    return virtualUART_GETBufferRemainingSize(tx->head, tx->tail) >= 9 + tx->stopBits + tx->parityBits;
+    return VUARTGETBufferRemainingSize(tx->head, tx->tail) >= 9 + tx->stopBits + tx->parityBits;
 }
 
-inline bool virtualUART_IsAbleToReadFromBuffer(virtualUART_Receiver *rx)
+inline bool VUARTIsAbleToReadByteFromBuffer(VUARTStreamBuffer *rx)
 {
-    int8_t remainingSize = virtualUART_GETBufferRemainingSize(rx->head, rx->tail);
+    int8_t remainingSize = VUARTGETBufferRemainingSize(rx->head, rx->tail);
     // Condition: There's another Byte be wtritten/writting to the buffer, or current Byte is complete and no error
     return (remainingSize > 8) || (remainingSize == 8 && (rx->state & 0b10000000) && rx->errorLevel == 0);
 }
@@ -348,8 +351,3 @@ static inline void aliasPointerDecrease(uint32_t *pointerToAliasVirtualPointer)
     (*pointerToAliasVirtualPointer)--;
     (*pointerToAliasVirtualPointer) &= BUFFER_ALIAS_SIZE_MASK;
 }
-
-/*
-The bright day is done, and we are for the dark.
-
-*/
