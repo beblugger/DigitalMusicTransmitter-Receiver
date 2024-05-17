@@ -389,6 +389,11 @@
               <FileType>1</FileType>
               <FilePath>.\transmitterForTestMaxSysTickFreq.c</FilePath>
             </File>
+            <File>
+              <FileName>customizedUARTIO.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\customizedUARTIO.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
