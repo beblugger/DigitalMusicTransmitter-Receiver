@@ -22,37 +22,33 @@
 // Only 1 start bit is supported
 typedef struct
 {
-    uint8_t buffer[BUFFER_SIZE];
-    uint32_t *bufferAlias;
-    uint32_t head;
-    uint32_t tail;
-    uint8_t stopBits;
-    uint8_t parityBits;
-    uint8_t parity;
+    volatile uint8_t buffer[BUFFER_SIZE];
+    volatile uint32_t *bufferAlias;
+    volatile uint32_t head;
+    volatile uint32_t tail;
+    volatile uint8_t stopBits;
+    volatile uint8_t parityBits;
+    volatile uint8_t parity;
 } VUARTStreamBuffer;
 
 #define BIT_BAND_BASE 0x22000000
 #define SRAM_MASK 0x00ffffff
 
-#define BIT_BAND_ALIAS_SRAM(addr, bit) (uint32_t *)((BIT_BAND_BASE) | ((((uint32_t)(addr)) & SRAM_MASK) << 5) | ((uint32_t)(bit) << 2))
-#define GET_BIT_BAND_ADDR_FROM_ALIAS(alias) (uint32_t *)(((uint32_t)(alias) & SRAM_MASK) >> 5)
+#define BIT_BAND_ALIAS_SRAM(addr, bit) (volatile uint32_t *)((BIT_BAND_BASE) | ((((volatile uint32_t)(addr)) & SRAM_MASK) << 5) | ((volatile uint32_t)(bit) << 2))
 
 // Function declarations
-void VUARTInitTransmitter(VUARTStreamBuffer *tx, uint8_t stopBits, uint8_t parityBits);
-void VUARTWriteByteToTransmitter(VUARTStreamBuffer *tx, uint8_t data);
-uint8_t VUARTReadBitFromTransmitter(VUARTStreamBuffer *tx);
-static uint32_t *GetBitBandAlias(uint32_t address, uint8_t bit);
-static uint32_t *GetAddressFromBitBandAlias(uint32_t *alias);
-bool VUARTIsBufferFull(uint32_t head, uint32_t tail);
-bool VUARTIsBufferEmpty(uint32_t head, uint32_t tail);
-uint32_t VUARTGETBufferRemainingSize(uint32_t head, uint32_t tail);
-static uint8_t calculateParity(uint8_t byte);
-static void aliasPointerIncrease(uint32_t *pointer);
-static void aliasPointerDecrease(uint32_t *pointer);
-bool VUARTIsAbleToWriteToBuffer(VUARTStreamBuffer *tx);
+void VUARTInitTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_t stopBits, volatile uint8_t parityBits);
+void VUARTWriteByteToTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_t data);
+uint8_t VUARTReadBitFromTransmitter(volatile VUARTStreamBuffer *tx);
+static volatile uint32_t *GetBitBandAlias(volatile uint32_t address, volatile uint8_t bit);
+bool VUARTIsBufferEmpty(volatile uint32_t head, volatile uint32_t tail);
+uint32_t VUARTGETBufferRemainingSize(volatile uint32_t head, volatile uint32_t tail);
+static uint8_t calculateParity(volatile uint8_t byte);
+static void aliasPointerIncrease(volatile uint32_t *pointer);
+bool VUARTIsAbleToWriteToBuffer(volatile VUARTStreamBuffer *tx);
 
 // 初始化发射器
-void VUARTInitTransmitter(VUARTStreamBuffer *tx, uint8_t stopBits, uint8_t parityBits)
+void VUARTInitTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_t stopBits, volatile uint8_t parityBits)
 {
     if (parityBits > 1 || stopBits < 1 || stopBits >= 8)
     {
@@ -63,11 +59,24 @@ void VUARTInitTransmitter(VUARTStreamBuffer *tx, uint8_t stopBits, uint8_t parit
     tx->stopBits = stopBits;
     tx->parityBits = parityBits;
     tx->buffer[0] = 0xff;
-    tx->bufferAlias = (uint32_t *)GetBitBandAlias((uint32_t)tx->buffer, 0);
+    tx->bufferAlias = (volatile uint32_t *)GetBitBandAlias((volatile uint32_t)tx->buffer, 0);
+}
+
+void VUARTAddStopBit(volatile VUARTStreamBuffer *tx, volatile uint8_t stopBits)
+{
+    if (VUARTGETBufferRemainingSize(tx->head, tx->tail) < stopBits)
+    {
+        return;
+    }
+    for (int i = 0; i < stopBits; i++)
+    {
+        tx->bufferAlias[tx->tail] = 1;
+        aliasPointerIncrease(&tx->tail);
+    }
 }
 
 // 发射器：向缓冲区写入数据，以字节为单位
-void VUARTWriteByteToTransmitter(VUARTStreamBuffer *tx, uint8_t data)
+void VUARTWriteByteToTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_t data)
 {
     if (VUARTGETBufferRemainingSize(tx->head, tx->tail) < 9 + tx->stopBits + tx->parityBits)
     {
@@ -89,7 +98,7 @@ void VUARTWriteByteToTransmitter(VUARTStreamBuffer *tx, uint8_t data)
     // 添加校验位
     if (tx->parityBits > 0)
     {
-        uint8_t parity = calculateParity(data);
+        volatile uint8_t parity = calculateParity(data);
         tx->bufferAlias[tx->tail] = parity;
         aliasPointerIncrease(&tx->tail);
     }
@@ -103,60 +112,50 @@ void VUARTWriteByteToTransmitter(VUARTStreamBuffer *tx, uint8_t data)
 }
 
 // 发射器：从缓冲区读出数据，以比特为单位
-uint8_t VUARTReadBitFromTransmitter(VUARTStreamBuffer *tx)
+uint8_t VUARTReadBitFromTransmitter(volatile VUARTStreamBuffer *tx)
 {
+    volatile uint8_t bit;
     if (VUARTIsBufferEmpty(tx->head, tx->tail))
     {
         // When no signal is transmitting, UART requires a high level signal
         return 1;
     }
-    uint8_t bit = tx->bufferAlias[tx->tail];
-    aliasPointerIncrease(&tx->tail);
+    bit = tx->bufferAlias[tx->head];
+    aliasPointerIncrease(&tx->head);
     return bit;
 }
 
 // 位带别名映射
-static uint32_t *GetBitBandAlias(uint32_t address, uint8_t bit)
+static volatile uint32_t *GetBitBandAlias(volatile uint32_t address, volatile uint8_t bit)
 {
     return BIT_BAND_ALIAS_SRAM(address, bit);
 }
 
-static uint32_t *GetAddressFromBitBandAlias(uint32_t *alias)
-{
-    return (uint32_t *)GET_BIT_BAND_ADDR_FROM_ALIAS(alias);
-}
-
-// 检查缓冲区是否为满
-bool VUARTIsBufferFull(uint32_t head, uint32_t tail)
-{
-    return ((head + 1) & BUFFER_ALIAS_SIZE_MASK) == tail;
-}
-
 // 检查缓冲区是否为空
-bool VUARTIsBufferEmpty(uint32_t head, uint32_t tail)
+bool VUARTIsBufferEmpty(volatile uint32_t head, volatile uint32_t tail)
 {
     return head == tail;
 }
 
 // 获取缓冲区剩余大小, 以bit为单位
-uint32_t VUARTGETBufferRemainingSize(uint32_t head, uint32_t tail)
+uint32_t VUARTGETBufferRemainingSize(volatile uint32_t head, volatile uint32_t tail)
 {
-    if (head >= tail)
+    if (head <= tail)
     {
-        return (tail - head) - 1;
+        return (BUFFER_ALIAS_SIZE - (tail - head)) - 1;
     }
-    return (BUFFER_ALIAS_SIZE - (tail - head)) - 1;
+    return (head - tail) - 1;
 }
 
-bool VUARTIsAbleToWriteToBuffer(VUARTStreamBuffer *tx)
+bool VUARTIsAbleToWriteToBuffer(volatile VUARTStreamBuffer *tx)
 {
     return VUARTGETBufferRemainingSize(tx->head, tx->tail) >= 9 + tx->stopBits + tx->parityBits;
 }
 
 // 计算奇偶校验位
-static uint8_t calculateParity(uint8_t byte)
+static uint8_t calculateParity(volatile uint8_t byte)
 {
-    uint8_t parity = 0;
+    volatile uint8_t parity = 0;
     while (byte)
     {
         parity ^= (byte & 1);
@@ -165,14 +164,8 @@ static uint8_t calculateParity(uint8_t byte)
     return parity;
 }
 
-static void aliasPointerIncrease(uint32_t *pointerToAliasVirtualPointer)
+static void aliasPointerIncrease(volatile uint32_t *pointerToAliasVirtualPointer)
 {
     (*pointerToAliasVirtualPointer)++;
-    (*pointerToAliasVirtualPointer) &= BUFFER_ALIAS_SIZE_MASK;
-}
-
-static void aliasPointerDecrease(uint32_t *pointerToAliasVirtualPointer)
-{
-    (*pointerToAliasVirtualPointer)--;
     (*pointerToAliasVirtualPointer) &= BUFFER_ALIAS_SIZE_MASK;
 }

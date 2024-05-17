@@ -15,7 +15,7 @@
 
 #include "customizedUARTIO.h"
 
-#define UARTMBaseFreq 1
+#define UARTMBaseFreq 2500
 #define SysTickResloution 120
 
 static uint32_t SystemClkFrequency = 0;
@@ -33,37 +33,40 @@ void InitSysTick(uint32_t frequency);
 void InitUART(void);
 void SysTick_Handler(void);
 
-static uint8_t WhatRxReceiverd[16];
+static uint8_t WhatRxReceiverd[64];
 static uint16_t WhatRxReceiverdIndex = 0;
 static uint8_t counter = 0;
+
+static uint32_t debugpui32Baud, debugpui32Config;
 
 int main(void)
 {
     InitGPIO();
+    GPIOPinWrite(GPIO_PORTK_BASE, GPIO_PIN_0, GPIO_PIN_0);
     SystemClkFrequency = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ | SYSCTL_OSC_MAIN |
                                              SYSCTL_USE_PLL | SYSCTL_CFG_VCO_480),
                                             120000000);
-    InitUART();
-    InitSysTick(UARTMBaseFreq * SysTickResloution);
-
     VUARTInitTransmitter(&txBuffer, 1, 1);
+    InitSysTick(UARTMBaseFreq * SysTickResloution);
+    InitUART();
+    UARTConfigGetExpClk(UART2_BASE, SystemClkFrequency, &debugpui32Baud, &debugpui32Config);
+
     while (true)
     {
-        while (UARTCharsAvail(UART2_BASE) && WhatRxReceiverdIndex < 16)
+        while (UARTCharsAvail(UART2_BASE) && WhatRxReceiverdIndex < 64)
         {
             WhatRxReceiverd[WhatRxReceiverdIndex] = UARTCharGet(UART2_BASE);
             WhatRxReceiverdIndex++;
         }
         // if (!UARTBusy(UART2_BASE))
         // {
-        //     UARTCharPut(UART2_BASE, counter);
-        //     counter++;
-        //     UARTCharPut(UART2_BASE, counter);
+        //     UARTCharPut(UART2_BASE, 0x37);
         //     counter++;
         // }
-        if (VUARTIsAbleToWriteToBuffer(&txBuffer))
+        if (VUARTGETBufferRemainingSize(txBuffer.head, txBuffer.tail) > 35)
         {
-            VUARTWriteByteToTransmitter(&txBuffer, 0x37);
+            VUARTWriteByteToTransmitter(&txBuffer, counter);
+            //VUARTAddStopBit(&txBuffer, 16);
             counter++;
         }
     }
@@ -84,7 +87,7 @@ void SysTick_Handler(void)
         SysTickPhaseCounter = 0;
         debugCounter++;
         bitWritingtoP0 = VUARTReadBitFromTransmitter(&txBuffer);
-        GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, 0);
+        GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, GPIO_PIN_0);
     }
     else if (SysTickPhaseCounter == SysTickResloution * 2 / 3)
     {
@@ -106,7 +109,7 @@ void SysTick_Handler(void)
 
     // After waiting too long for a bit, put 0 to K0
     counterSinceLastUpdateK0++;
-    if (counterSinceLastUpdateK0 > SysTickResloution)
+    if (counterSinceLastUpdateK0 > SysTickResloution * 2)
     {
         counterSinceLastUpdateK0 = 0;
         activatedLength = 0;
@@ -122,13 +125,17 @@ void SysTick_Handler(void)
     {
         if (activatedLength > SysTickResloution / 2)
         {
+            counterSinceLastUpdateK0 = 0;
+            activatedLength = 0;
             GPIOPinWrite(GPIO_PORTK_BASE, GPIO_PIN_0, 0);
         }
         else if (activatedLength > SysTickResloution / 6)
         {
+            counterSinceLastUpdateK0 = 0;
+            activatedLength = 0;
             GPIOPinWrite(GPIO_PORTK_BASE, GPIO_PIN_0, GPIO_PIN_0);
         }
-        activatedLength -= 2;
+        activatedLength--;
         if (activatedLength < 0)
         {
             activatedLength = 0;
