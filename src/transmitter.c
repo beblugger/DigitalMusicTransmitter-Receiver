@@ -15,6 +15,7 @@
 #include "initialization.h"
 #include "note.h"
 #include "ASynthesis.h"
+#include "scMyChineseHeart.h"
 
 #define UARTMBaseFreq 2500
 #define SysTickResloution 120
@@ -32,7 +33,6 @@ static uint8_t WhatRxReceiverd[64];
 static uint16_t WhatRxReceiverdIndex = 0;
 static uint8_t counter = 0;
 
-// static uint32_t debugpui32Baud, debugpui32Config;
 static playerState PF3player;
 
 int main(void)
@@ -45,7 +45,6 @@ int main(void)
     VUARTInitTransmitter(&txBuffer, 1, 1);
     InitSysTick(SystemClkFrequency, UARTMBaseFreq * SysTickResloution);
     InitUART(SystemClkFrequency, UARTMBaseFreq);
-    // UARTConfigGetExpClk(UART2_BASE, SystemClkFrequency, &debugpui32Baud, &debugpui32Config);
 
     clearPlayerState(&PF3player);
     noteCmd note = {60, 100, 500}; // Example note
@@ -58,22 +57,14 @@ int main(void)
             WhatRxReceiverd[WhatRxReceiverdIndex] = UARTCharGet(UART2_BASE);
             WhatRxReceiverdIndex++;
         }
-        // if (!UARTBusy(UART2_BASE))
-        // {
-        //     UARTCharPut(UART2_BASE, 0x37);
-        //     counter++;
-        // }
         if (VUARTGETBufferRemainingSize(txBuffer.head, txBuffer.tail) > 35)
         {
             VUARTWriteByteToTransmitter(&txBuffer, counter);
-            // VUARTAddStopBit(&txBuffer, 16);
             counter++;
         }
     }
     return 0;
 }
-
-// static volatile uint16_t debugCounter = 0;
 
 void SysTick_Handler(void)
 {
@@ -105,7 +96,6 @@ void updateP0State(void)
     if (SysTickPhaseCounter >= SysTickResloution)
     {
         SysTickPhaseCounter = 0;
-        // debugCounter++;
         bitWritingtoP0 = VUARTReadBitFromTransmitter(&txBuffer);
         GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, GPIO_PIN_0);
     }
