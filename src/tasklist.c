@@ -17,6 +17,7 @@ Task1:
 */
 
 /*
+Task2:
 实现一个函数：
 uint8_t analyzeCommand(char *command);
 command是一个以'\0'结尾的字符串，表示一个控制指令。
@@ -54,4 +55,153 @@ Error Command:
 "play" -> 0b00111111
 "transmit" -> 0b00111111
 NULL -> 0b00111111
+*/
+
+/*
+Task3:
+https://github.com/beblugger/DigitalMusicTransmitter-Receiver/blob/main/src/scorerec.h
+实现这个库或者里面的部分函数：
+scoreRec 库文档
+概述
+scoreRec 库用于管理和记录音乐指令。该库定义了一个 scoreRecorder 结构体，用于保存音符指令列表，以及一系列函数来初始化、记录和操作这些指令。
+
+数据结构
+scoreRecorder
+typedef struct {
+    noteCmd *noteCmdList; // 音符指令列表的指针
+    uint32_t maxSize;     // 音符指令列表的最大容量
+    uint32_t cursor;      // 当前指令的索引
+} scoreRecorder;
+noteCmdList: 指向 noteCmd 结构体数组的指针，用于存储音符指令。
+maxSize: 音符指令列表的最大容量。
+cursor: 当前记录位置的索引，指示下一个要记录的位置。
+
+
+函数接口
+
+
+void initScoreRecorder(scoreRecorder *rec, noteCmd *noteCmdList, uint32_t maxSize)
+初始化 scoreRecorder 结构体。
+
+参数
+rec: 指向 scoreRecorder 结构体的指针。
+noteCmdList: 用于存储音符指令的 noteCmd 数组的指针。
+maxSize: noteCmdList 数组的最大容量。
+返回值
+
+示例
+noteCmd myNoteCmdList[100];
+scoreRecorder myRecorder;
+initScoreRecorder(&myRecorder, myNoteCmdList, 100);
+
+
+void recordNoteCmd(scoreRecorder *rec, noteCmd *noteCmd)
+向 scoreRecorder 中记录一个新的音符指令。
+
+参数
+rec: 指向 scoreRecorder 结构体的指针。
+noteCmd: 要记录的 noteCmd 指令。
+返回值 无
+注意
+如果记录器已满，该函数不会记录新的指令。
+示例
+noteCmd newNote = {60, 100, 500};
+recordNoteCmd(&myRecorder, &newNote);
+
+
+bool isRecFull(scoreRecorder *rec)
+检查 scoreRecorder 是否已满。
+
+参数
+rec: 指向 scoreRecorder 结构体的指针。
+返回值
+true 如果记录器已满。
+false 如果记录器未满。
+示例
+if (isRecFull(&myRecorder)) {
+    // 处理记录器已满的情况
+}
+
+
+void resetRec(scoreRecorder *rec)
+重置 scoreRecorder，清空所有记录的音符指令。
+
+参数
+rec: 指向 scoreRecorder 结构体的指针。
+返回值
+无
+示例
+resetRec(&myRecorder);
+
+
+bool isCmdLeft(scoreRecorder *rec)
+检查是否还有未读取的音符指令。
+
+参数
+rec: 指向 scoreRecorder 结构体的指针。
+返回值
+true 如果有未读取的音符指令。
+false 如果没有未读取的音符指令。
+示例
+if (isCmdLeft(&myRecorder)) {
+    // 处理有未读取指令的情况
+}
+
+
+void getNoteCmd(scoreRecorder *rec, noteCmd *noteCmd)
+获取下一个未读取的音符指令，并将指针移动到下一条指令。
+
+参数
+rec: 指向 scoreRecorder 结构体的指针。
+noteCmd: 指向 noteCmd 结构体的指针，用于存储读取到的指令。
+返回值
+无
+注意
+调用此函数前应确保 isCmdLeft(rec) 返回 true。
+示例
+noteCmd currentNote;
+if (isCmdLeft(&myRecorder)) {
+    getNoteCmd(&myRecorder, &currentNote);
+}
+使用示例
+#include "scoreRec.h"
+#include "note.h"
+
+int main() {
+    // 定义音符指令列表和记录器
+    noteCmd myNoteCmdList[100];
+    scoreRecorder myRecorder;
+
+    // 初始化记录器
+    initScoreRecorder(&myRecorder, myNoteCmdList, 100);
+
+    // 记录一些音符指令
+    noteCmd note1 = {60, 100, 500};
+    recordNoteCmd(&myRecorder, &note1);
+
+    noteCmd note2 = {62, 100, 500};
+    recordNoteCmd(&myRecorder, &note2);
+
+    // 检查记录器是否已满
+    if (isRecFull(&myRecorder)) {
+        // 处理记录器已满的情况
+    }
+
+    // 重置记录器
+    resetRec(&myRecorder);
+
+    // 检查是否有未读取的指令并获取
+    if (isCmdLeft(&myRecorder)) {
+        noteCmd currentNote;
+        getNoteCmd(&myRecorder, &currentNote);
+    }
+
+    return 0;
+}
+注意事项
+在调用 recordNoteCmd 前，确保记录器未满。
+在调用 getNoteCmd 前，确保有未读取的指令。
+使用 resetRec 重置记录器后，所有记录的指令将被清除。
+依赖
+note.h 文件定义了 noteCmd 结构体。确保在使用本库前包含该文件。
 */
