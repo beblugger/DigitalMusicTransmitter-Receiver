@@ -46,6 +46,7 @@ uint32_t VUARTGETBufferRemainingSize(volatile uint32_t head, volatile uint32_t t
 static uint8_t calculateParity(volatile uint8_t byte);
 static void aliasPointerIncrease(volatile uint32_t *pointer);
 bool VUARTIsAbleToWriteToBuffer(volatile VUARTStreamBuffer *tx);
+void VUARTAddStopBit(volatile VUARTStreamBuffer *tx, volatile uint8_t stopBits);
 
 // 初始化发射器
 void VUARTInitTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_t stopBits, volatile uint8_t parityBits)

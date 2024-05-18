@@ -1,61 +1,20 @@
+#ifndef PART_TM4C1294NCPDT
 #define PART_TM4C1294NCPDT
+#endif
+
+#include "initialization.h"
 
 #include <stdint.h>
-#include <stdbool.h>
-#include "inc/hw_memmap.h"     // 基址宏定义
-#include "inc/hw_types.h"      // 数据类型宏定义，寄存器访问函数
-#include "driverlib/gpio.h"    // 通用IO口宏定义
+
+#include "inc/hw_memmap.h" // 基址宏定义
+#include "inc/hw_ints.h"
+
 #include "driverlib/pin_map.h" // TM4C系列MCU外围设备管脚宏定义
 #include "driverlib/sysctl.h"  // 系统控制宏定义
-#include "driverlib/uart.h"    //UART相关宏定义
-#include "driverlib/interrupt.h"
-#include "inc/hw_ints.h"
+#include "driverlib/gpio.h"    // 通用IO口宏定义
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
-
-#define testFrequency 1000000
-
-// #include "customizedUARTIO.h"
-
-static uint16_t i = 0;
-static uint32_t SystemClkFrequency = 0;
-
-void InitGPIO(void);
-void InitSysTick(uint32_t frequency);
-void InitUART(void);
-void SysTick_Handler(void);
-
-// VUARTTransmitter mainTransmitter;
-static volatile uint32_t testconuter = 0;
-static volatile uint8_t ledState = 0;
-static uint32_t gottenFrequency = 0;
-
-int main(void)
-{
-    InitGPIO();
-    SystemClkFrequency = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ | SYSCTL_OSC_MAIN |
-                                             SYSCTL_USE_PLL | SYSCTL_CFG_VCO_480),
-                                            120000000);
-
-    gottenFrequency = SysCtlClockGet();
-    InitSysTick(testFrequency);
-    while (true)
-        ;
-
-    return 0;
-}
-
-void SysTick_Handler(void)
-{
-    testconuter++;
-    if (testconuter >= testFrequency / 2)
-    {
-        testconuter = 0;
-        ledState ^= GPIO_PIN_0;
-
-        GPIOPinWrite(GPIO_PORTN_BASE, GPIO_PIN_0, ledState);
-    }
-}
+#include "driverlib/uart.h" //UART相关宏定义
 
 void InitGPIO(void)
 {
@@ -75,10 +34,23 @@ void InitGPIO(void)
         ;
 
     GPIOPinTypeGPIOOutput(GPIO_PORTN_BASE, GPIO_PIN_0 | GPIO_PIN_1);
-    GPIOPinWrite(GPIO_PORTK_BASE, GPIO_PIN_0, GPIO_PIN_0);
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOK);
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOK))
+        ;
+    GPIOPinTypeGPIOOutput(GPIO_PORTK_BASE, GPIO_PIN_0); // Physically linked to UART Rx, for converted UARTM output
+    GPIOPinTypeGPIOInput(GPIO_PORTK_BASE, GPIO_PIN_1);  // Physically linked to UART Tx, for converted UARTM input
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOP);
+
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOP))
+        ;
+
+    GPIOPinTypeGPIOOutput(GPIO_PORTP_BASE, GPIO_PIN_0); // Physically linked to P1, for UARTM output
+    GPIOPinTypeGPIOInput(GPIO_PORTP_BASE, GPIO_PIN_1);  // Physically linked to P0, for UARTM input
 }
 
-void InitSysTick(uint32_t frequency)
+void InitSysTick(uint32_t SystemClkFrequency, uint32_t frequency)
 {
     // Set up the period for the SysTick timer.  The SysTick timer period will
     // be equal to the system clock / frequency.
@@ -92,7 +64,7 @@ void InitSysTick(uint32_t frequency)
     SysTickIntEnable();
 }
 
-void InitUART(void)
+void InitUART(uint32_t SystemClkFrequency, uint32_t UARTMBaseFreq)
 {
     // Enable the GPIO port that is used for the on-board UART.
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
@@ -120,7 +92,22 @@ void InitUART(void)
                         (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
                          UART_CONFIG_PAR_NONE));
 
-    // Enable the UART interrupt.
-    IntEnable(INT_UART0);
-    UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_RT);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
+    // Check if the peripheral access is enabled
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOD))
+        ;
+
+    GPIOPinConfigure(GPIO_PD4_U2RX);
+    GPIOPinConfigure(GPIO_PD5_U2TX);
+
+    GPIOPinTypeUART(GPIO_PORTD_BASE, GPIO_PIN_4 | GPIO_PIN_5);
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART2);
+
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_UART2))
+        ;
+
+    UARTConfigSetExpClk(UART2_BASE, SystemClkFrequency, UARTMBaseFreq,
+                        (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
+                         UART_CONFIG_PAR_EVEN));
 }
