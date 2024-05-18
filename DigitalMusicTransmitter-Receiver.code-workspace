@@ -20,7 +20,9 @@
             "asynthesis.h": "c",
             "unity.h": "c",
             "scorerec.h": "c",
-            "pitchperiod.h": "c"
+            "pitchperiod.h": "c",
+            "interrupt.h": "c",
+            "uart.h": "c"
         }
     }
 }

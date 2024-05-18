@@ -88,6 +88,8 @@ uint8_t analyzeCommand(char *command);
 
 # Task 3
 
+Finished
+
 ## `scoreRec` 库文档
 
 ### 概述
