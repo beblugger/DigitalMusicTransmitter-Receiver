@@ -16,7 +16,8 @@
             "stdint.h": "c",
             "initialization.h": "c",
             "customizeduartio.h": "c",
-            "note.h": "c"
+            "note.h": "c",
+            "asynthesis.h": "c"
         }
     }
 }

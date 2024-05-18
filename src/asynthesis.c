@@ -35,9 +35,9 @@ void setCommandNote(playerState *player, noteCmd *noteCmd)
     }
     else if (noteCmd->intensity == 0)
     {
-        for (i = i; i < player->activatedNoteNum - 1; i++)
+        for (j = i; j < player->activatedNoteNum - 1; i++)
         {
-            player->noteList[i] = player->noteList[i + 1];
+            player->noteList[j] = player->noteList[j + 1];
         }
         player->activatedNoteNum--;
     }
