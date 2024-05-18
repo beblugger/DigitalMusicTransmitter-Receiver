@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 uint8_t processUARTInput(void);
+uint8_t analyzeCommand(char *command);
 
 #endif /* UARTUI_H */
 
