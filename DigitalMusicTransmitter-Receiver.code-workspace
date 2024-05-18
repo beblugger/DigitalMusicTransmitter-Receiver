@@ -24,7 +24,8 @@
             "interrupt.h": "c",
             "uart.h": "c",
             "scorebuf.h": "c",
-            "uartui.h": "c"
+            "uartui.h": "c",
+            "stdbool.h": "c"
         }
     }
 }
