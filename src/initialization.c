@@ -5,6 +5,7 @@
 #include "initialization.h"
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "inc/hw_memmap.h" // 基址宏定义
 #include "inc/hw_ints.h"

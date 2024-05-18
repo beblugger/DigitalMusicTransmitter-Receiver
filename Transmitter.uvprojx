@@ -323,7 +323,7 @@
             <PlainCh>0</PlainCh>
             <Ropi>0</Ropi>
             <Rwpi>0</Rwpi>
-            <wLevel>1</wLevel>
+            <wLevel>3</wLevel>
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
             <uC99>1</uC99>
@@ -387,7 +387,7 @@
             <File>
               <FileName>driverlib.lib</FileName>
               <FileType>4</FileType>
-              <FilePath>.\driverlib\rvmdk\driverlib.lib</FilePath>
+              <FilePath>.\src\driverlib\rvmdk\driverlib.lib</FilePath>
             </File>
           </Files>
         </Group>
