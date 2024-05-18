@@ -14,7 +14,7 @@ typedef struct
 
 void initScoreRecorder(scoreRecorder *rec, noteCmd *noteCmdList, uint32_t maxSize);
 void recordNoteCmd(scoreRecorder *rec, noteCmd *noteCmd);
-bool isRecFull(scoreRecorder *rec);
+bool isRecEnd(scoreRecorder *rec);
 void resetRec(scoreRecorder *rec);
 bool isCmdLeft(scoreRecorder *rec);
 void getNoteCmd(scoreRecorder *rec, noteCmd *noteCmd);

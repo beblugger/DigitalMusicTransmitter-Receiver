@@ -15,7 +15,7 @@ void setNoteCmd(noteCmd *note, uint8_t pitch, uint8_t intensity, uint16_t delay)
     note->delay = delay;
 }
 
-bool noteCmdAlignedFill(noteCmd *note, uint8_t byte)
+bool noteCmdAlignedFill(noteCmd *note, const uint8_t byte)
 {
     if (byte == 0xff)
     {

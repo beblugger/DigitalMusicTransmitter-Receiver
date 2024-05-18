@@ -11,7 +11,6 @@
 #include "driverlib/sysctl.h" // 系统控制宏定义
 #include "driverlib/uart.h"
 
-#include "customizedUARTIO.h"
 #include "initialization.h"
 #include "note.h"
 #include "ASynthesis.h"
@@ -23,7 +22,4 @@ void SysTick_Handler(void);
 void updateK0State(void);
 void updateP0State(void);
 void updateF3State(void);
-bool isAbleToWriteNoteToTransmitter(volatile VUARTStreamBuffer *tx);
-void writeNoteToTransmitter(volatile VUARTStreamBuffer *tx, noteCmd *note);
-void writeResyncToTransmitter(volatile VUARTStreamBuffer *tx);
-void replay(noteCmd *noteList, scoreBuffer *LocalBuffer, scoreBuffer *FMBuffer, playerState *Localplayer, scoreRecorder *LocalRec, scoreRecorder *FMRec, uint32_t maxSize);
+void replay(scoreBuffer *LocalBuffer, playerState *Localplayer, scoreRecorder *LocalRec);

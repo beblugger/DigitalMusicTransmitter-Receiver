@@ -415,11 +415,6 @@
               <FilePath>D:\李响\Documents\University\大二下\工科创II\A2000TM4\DigitalMusicTransmitter-Receiver\src\scoreRec.c</FilePath>
             </File>
             <File>
-              <FileName>transmitter.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>D:\李响\Documents\University\大二下\工科创II\A2000TM4\DigitalMusicTransmitter-Receiver\src\transmitter.c</FilePath>
-            </File>
-            <File>
               <FileName>scMyChineseHeart.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\scMyChineseHeart.c</FilePath>
@@ -433,6 +428,11 @@
               <FileName>UARTui.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\UARTui.c</FilePath>
+            </File>
+            <File>
+              <FileName>receiver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\receiver.c</FilePath>
             </File>
           </Files>
         </Group>

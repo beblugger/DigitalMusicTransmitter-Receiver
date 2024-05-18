@@ -5,81 +5,104 @@
 
 static uint32_t SystemClkFrequency = 0;
 
-volatile static VUARTStreamBuffer txBuffer;
-
-static uint8_t WhatRxReceiverd[64];
-static uint16_t WhatRxReceiverdIndex = 0;
 static uint8_t counter = 0;
 
-static scoreBuffer PF3Buffer, FMBuffer;
+static scoreBuffer PF3Buffer;
 static playerState PF3player;
-static scoreRecorder myChineseHeartRecorder, myChineseHeartRecFM;
+static scoreRecorder recorder;
+static volatile noteCmd recorderList[256];
+static volatile bool recordState;
+static volatile bool singalSource; // 0: FM, 1: recorder
+static volatile bool syncState;
 
-static volatile bool ResumePause, FMState, PF3State;
+static volatile uint32_t _2sCounter = 0;
+#define _2s 600000
 
 int main(void)
 {
     static noteCmd tmpNote;
     static uint8_t command;
+    syncState = false;
     // initalize
     InitGPIO();
     SystemClkFrequency = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ | SYSCTL_OSC_MAIN |
                                              SYSCTL_USE_PLL | SYSCTL_CFG_VCO_480),
                                             120000000);
-    VUARTInitTransmitter(&txBuffer, 1, 1);
-    writeResyncToTransmitter(&txBuffer);
 
     InitSysTick(SystemClkFrequency, UARTMBaseFreq * SysTickResloution);
     InitUART(SystemClkFrequency, UARTMBaseFreq);
-    ResumePause = true;
-    FMState = true;
-    PF3State = true;
-    replay(myChineseHeart, &PF3Buffer, &FMBuffer, &PF3player, &myChineseHeartRecorder, &myChineseHeartRecFM, 110);
+
+    initScoreRecorder(&recorder, recorderList, 0);
 
     while (true)
     {
-        if (isAbleToWriteNoteToTransmitter(&txBuffer) && isCmdAvail(&FMBuffer))
+        if (reSyncFlag)
         {
-            getCmdFromBuf(&FMBuffer, &tmpNote);
-            writeNoteToTransmitter(&txBuffer, &tmpNote);
+            _2sCounter = 0;
+            reSyncFlag = false;
+            syncState = true;
+            UARTStringPut(UART0_BASE, "Sync received!\n");
         }
-        if (isCmdLeft(&myChineseHeartRecFM) && !isBufFull(&FMBuffer))
+        if (_2sCounter >= _2s)
         {
-            getNoteCmd(&myChineseHeartRecFM, &tmpNote);
-            addNoteToBuf(&FMBuffer, &tmpNote);
+            _2sCounter = 0;
+            syncState = false;
+            UARTStringPut(UART0_BASE, "Sync timeout.\n");
         }
-        if (isCmdLeft(&myChineseHeartRecorder) && !isBufFull(&PF3Buffer))
+
+        switch (singalSource)
         {
-            getNoteCmd(&myChineseHeartRecorder, &tmpNote);
-            addNoteToBuf(&PF3Buffer, &tmpNote);
-        }
-        command = processUARTInput();
-        if ((command & TRANSMITTER_CMD_MASK) == TRANSMITTER_CMD_MASK)
-        {
-            switch (command & 0b11111000)
+        case 0:
+            if (UARTCharsAvail(UART2_BASE) && !isBufFull(&PF3Buffer))
             {
-            case SET_SONG_CMD:
-                replay(myChineseHeart, &PF3Buffer, &FMBuffer, &PF3player, &myChineseHeartRecorder, &myChineseHeartRecFM, 110);
+                command = UARTCharGet(UART2_BASE);
+                if (noteCmdAlignedFill(&tmpNote, command) && syncState)
+                {
+                    addNoteToBuf(&PF3Buffer, &tmpNote);
+                    if (recordState && recorder.maxSize < 256)
+                    {
+                        recordNoteCmd(&recorder, &tmpNote);
+                    }
+                }
+            }
+            break;
+        case 1:
+            if (isCmdLeft(&recorder) && !isBufFull(&PF3Buffer))
+            {
+                getNoteCmd(&recorder, &tmpNote);
+                addNoteToBuf(&PF3Buffer, &tmpNote);
+            }
+            break;
+        }
+
+        command = processUARTInput();
+        if ((command & RECEIVER_CMD_MASK) == RECEIVER_CMD_MASK)
+        {
+            switch (command & 0b10111000)
+            {
+            case RECORD_CMD:
+                recordState = command & 0b00000111;
+                if (recordState)
+                {
+                    resetRec(&recorder);
+                    recorder.maxSize = 0;
+                }
                 break;
-            case PAUSE_SONG_CMD:
-                ResumePause = false;
+            case PLAYRECORD_CMD:
+                singalSource = 1;
+                replay(&PF3Buffer, &PF3player, &recorder);
                 break;
-            case RESUME_SONG_CMD:
-                ResumePause = true;
-                break;
-            case FM_TRANSMITTER_CMD:
-                FMState = command & 0b00000111;
-                break;
-            case BUZZER_CMD:
-                PF3State = command & 0b00000111;
+            case PLAYFM_CMD:
+                syncState = false;
+                recordState = false;
+                singalSource = 0;
+                clearNoteCmd(&tmpNote);
+                clearPlayerState(&PF3player);
+                initBuf(&PF3Buffer);
                 break;
             default:
                 break;
             }
-        }
-        if (!isCmdLeft(&myChineseHeartRecorder))
-        {
-            replay(myChineseHeart, &PF3Buffer, &FMBuffer, &PF3player, &myChineseHeartRecorder, &myChineseHeartRecFM, 110);
         }
     }
     return 0;
@@ -91,62 +114,43 @@ void SysTick_Handler(void)
 #define _1ms 300
     static volatile uint8_t _30000HzCounter = 0;
 #define _30000Hz 10
-    static volatile uint32_t _1sCounter = 0;
-#define _1s 300000
     static volatile noteCmd tmpNote;
     _30000HzCounter++;
     _1msCounter++;
-    _1sCounter++;
+    _2sCounter++;
 
-    updateP0State();
     updateK0State();
 
     if (_30000HzCounter >= _30000Hz)
     {
         _30000HzCounter = 0;
-        if (PF3State && ResumePause)
-            updateF3State();
+        updateF3State();
     }
     if (_1msCounter >= _1ms)
     {
         _1msCounter = 0;
-        if (ResumePause)
+        PF3Buffer.timeSinceLastCmd++;
+        while (isCmdAvail(&PF3Buffer))
         {
-            PF3Buffer.timeSinceLastCmd++;
-            FMBuffer.timeSinceLastCmd++;
-            while (isCmdAvail(&PF3Buffer))
-            {
-                clearPlayerState(&PF3player);
-                getCmdFromBuf(&PF3Buffer, &tmpNote);
-                setCommandNote(&PF3player, &tmpNote);
-            }
+            clearPlayerState(&PF3player);
+            getCmdFromBuf(&PF3Buffer, &tmpNote);
+            setCommandNote(&PF3player, &tmpNote);
         }
-    }
-    if (_1sCounter >= _1s)
-    {
-        _1sCounter = 0;
-        writeResyncToTransmitter(&txBuffer);
     }
 }
 
-void replay(noteCmd *noteList, scoreBuffer *LocalBuffer, scoreBuffer *FMBuffer, playerState *Localplayer, scoreRecorder *LocalRec, scoreRecorder *FMRec, uint32_t maxSize)
+void replay(scoreBuffer *LocalBuffer, playerState *Localplayer, scoreRecorder *LocalRec)
 {
     noteCmd tmpNote;
     clearPlayerState(Localplayer);
     initBuf(LocalBuffer);
-    initBuf(FMBuffer);
-    initScoreRecorder(LocalRec, noteList, maxSize);
-    initScoreRecorder(FMRec, noteList, maxSize);
+    resetRec(LocalRec);
 
     while (!isBufFull(LocalBuffer) && isCmdLeft(LocalRec))
     {
         getNoteCmd(LocalRec, &tmpNote);
         addNoteToBuf(LocalBuffer, &tmpNote);
-        addNoteToBuf(FMBuffer, &tmpNote);
     }
-
-    FMRec->cursor = LocalRec->cursor;
-    FMBuffer->timeSinceLastCmd = 1024;
 }
 
 void updateF3State(void)
@@ -154,6 +158,10 @@ void updateF3State(void)
     static volatile uint32_t time = 0;
     static volatile bool PF3State = 0;
     static bool PF3StateNew;
+    if (!syncState)
+    {
+        return;
+    }
     PF3StateNew = getOutputIntensityBasic(&PF3player, time);
     if (PF3StateNew != PF3State)
     {
@@ -161,36 +169,6 @@ void updateF3State(void)
         GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, PF3State ? GPIO_PIN_3 : 0);
     }
     time++;
-}
-
-void updateP0State(void)
-{
-    static volatile uint16_t SysTickPhaseCounter = 0;
-    static volatile bool bitWritingtoP0 = 1;
-    // convert VUART -> UARTM, txBuffer -> P0
-
-    if (SysTickPhaseCounter >= SysTickResloution)
-    {
-        SysTickPhaseCounter = 0;
-        bitWritingtoP0 = VUARTReadBitFromTransmitter(&txBuffer);
-        if (FMState)
-            GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, GPIO_PIN_0);
-    }
-    else if (SysTickPhaseCounter == SysTickResloution * 2 / 3)
-    {
-        if (bitWritingtoP0)
-        {
-            GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, 0);
-        }
-    }
-    else if (SysTickPhaseCounter == SysTickResloution / 3)
-    {
-        if (!bitWritingtoP0)
-        {
-            GPIOPinWrite(GPIO_PORTP_BASE, GPIO_PIN_0, 0);
-        }
-    }
-    SysTickPhaseCounter++;
 }
 
 void updateK0State(void)
@@ -233,33 +211,4 @@ void updateK0State(void)
             activatedLength = 0;
         }
     }
-}
-
-bool isAbleToWriteNoteToTransmitter(volatile VUARTStreamBuffer *tx)
-{
-    return VUARTGetBufferRemainingSize(tx->head, tx->tail) > 12 * 2 + 11 * 4;
-}
-
-void writeNoteToTransmitter(volatile VUARTStreamBuffer *tx, noteCmd *note)
-{
-    if (!isAbleToWriteNoteToTransmitter(tx))
-    {
-        return;
-    }
-    uint8_t byte;
-    while (!noteCmdSplit(note, &byte))
-    {
-        VUARTWriteByteToTransmitter(tx, byte);
-    }
-}
-
-void writeResyncToTransmitter(volatile VUARTStreamBuffer *tx)
-{
-    if (VUARTGetBufferRemainingSize(tx->head, tx->tail) < 12 * 2)
-    {
-        return;
-    }
-
-    VUARTAddStopBit(tx, 12);
-    VUARTWriteByteToTransmitter(tx, 0xff);
 }

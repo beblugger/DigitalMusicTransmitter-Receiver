@@ -46,9 +46,9 @@ void test_isRecFull(void)
     scoreRecorder recorder;
     initScoreRecorder(&recorder, noteCmdList, 1);
 
-    TEST_ASSERT_FALSE(isRecFull(&recorder));
+    TEST_ASSERT_FALSE(isRecEnd(&recorder));
     recordNoteCmd(&recorder, &note);
-    TEST_ASSERT_TRUE(isRecFull(&recorder));
+    TEST_ASSERT_TRUE(isRecEnd(&recorder));
 }
 
 int main(void)

@@ -9,13 +9,10 @@ void initScoreRecorder(scoreRecorder *rec, noteCmd *noteCmdList, uint32_t maxSiz
 
 void recordNoteCmd(scoreRecorder *rec, noteCmd *noteCmd)
 {
-    if (!isRecFull(rec))
-    {
-        rec->noteCmdList[rec->cursor++] = *noteCmd;
-    }
+    rec->noteCmdList[rec->maxSize++] = *noteCmd;
 }
 
-bool isRecFull(scoreRecorder *rec)
+bool isRecEnd(scoreRecorder *rec)
 {
     return rec->cursor >= rec->maxSize;
 }
