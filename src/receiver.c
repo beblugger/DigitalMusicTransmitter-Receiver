@@ -1,4 +1,4 @@
-#include "transmitter.h"
+#include "receiver.h"
 
 #define UARTMBaseFreq 2500
 #define SysTickResloution 120

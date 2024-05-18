@@ -55,7 +55,7 @@ int main(void)
         //     UARTCharPut(UART2_BASE, 0x37);
         //     counter++;
         // }
-        if (VUARTGETBufferRemainingSize(txBuffer.head, txBuffer.tail) > 35)
+        if (VUARTGetBufferRemainingSize(txBuffer.head, txBuffer.tail) > 35)
         {
             VUARTWriteByteToTransmitter(&txBuffer, counter);
             // VUARTAddStopBit(&txBuffer, 16);

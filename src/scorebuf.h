@@ -11,9 +11,10 @@ typedef struct
     noteCmd buffer[32];
 #define SCORE_BUFFER_MASK 31
     uint8_t head, tail;
-    uint16_t timeSinceLastCmd;
+    int16_t timeSinceLastCmd;
 } scoreBuffer;
 
+void initBuf(scoreBuffer *buf);
 void updateBufCounter(scoreBuffer *buf);
 uint8_t getBufRemainingSize(scoreBuffer *buf);
 bool isBufFull(scoreBuffer *buf);

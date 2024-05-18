@@ -1,5 +1,13 @@
 #include "scoreBuf.h"
 
+// 初始化缓冲区
+void initBuf(scoreBuffer *buf)
+{
+    buf->head = 0;
+    buf->tail = 0;
+    buf->timeSinceLastCmd = 0;
+}
+
 // 更新缓冲区计数器
 void updateBufCounter(scoreBuffer *buf)
 {
