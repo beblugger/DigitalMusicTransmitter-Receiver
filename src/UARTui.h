@@ -22,6 +22,7 @@
 
 uint8_t processUARTInput(void);
 uint8_t analyzeCommand(char *command);
+void UARTStringPut(uint32_t ui32Base, const char *cMessage);
 
 #endif /* UARTUI_H */
 

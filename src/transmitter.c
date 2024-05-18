@@ -7,8 +7,6 @@ static uint32_t SystemClkFrequency = 0;
 
 volatile static VUARTStreamBuffer txBuffer;
 
-static uint8_t WhatRxReceiverd[64];
-static uint16_t WhatRxReceiverdIndex = 0;
 static uint8_t counter = 0;
 
 static scoreBuffer PF3Buffer, FMBuffer;
@@ -99,7 +97,7 @@ void SysTick_Handler(void)
     _1sCounter++;
 
     updateP0State();
-    updateK0State();
+    // updateK0State();
 
     if (_30000HzCounter >= _30000Hz)
     {

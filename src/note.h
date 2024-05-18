@@ -52,7 +52,7 @@ void setNoteCmd(noteCmd *note, uint8_t pitch, uint8_t intensity, uint16_t delay)
  * More than 2 bytes are not allowed.
  * @return True if the note command was filled to full, false otherwise.
  */
-bool noteCmdAlignedFill(noteCmd *note, uint8_t byte);
+bool noteCmdAlignedFill(noteCmd *note, const uint8_t byte);
 
 /**
  * @brief Splits the note command into a byte.
