@@ -17,7 +17,10 @@
             "initialization.h": "c",
             "customizeduartio.h": "c",
             "note.h": "c",
-            "asynthesis.h": "c"
+            "asynthesis.h": "c",
+            "unity.h": "c",
+            "scorerec.h": "c",
+            "pitchperiod.h": "c"
         }
     }
 }

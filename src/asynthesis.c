@@ -1,5 +1,5 @@
-#include "asynthesis.h"
-#include "pitchperiod.h"
+#include "ASynthesis.h"
+#include "pitchPeriod.h"
 
 void clearPlayerState(playerState *player)
 {

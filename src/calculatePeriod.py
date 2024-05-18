@@ -11,7 +11,7 @@ def midi_note_to_period(midi_note):
 
 def generate_midi_frequencies_and_periods():
     """Generate and write frequencies and periods for MIDI notes 0 to 127 to pitchperiod.h."""
-    with open("pitchperiod.h", "w") as file:
+    with open("pitchPeriod.h", "w") as file:
         file.write("#include<stdint.h>\n#define BASEFREQ "+f"{int(basefreq)}"+"\nconst uint16_t pitchPeriod[]={")
         for midi_note in range(128):
             frequency = midi_note_to_frequency(midi_note)
