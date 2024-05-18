@@ -8,7 +8,7 @@
 
 typedef struct
 {
-    noteCommand buffer[32];
+    noteCmd buffer[32];
 #define BUFFER_MASK 31
     uint8_t head, tail;
     uint16_t timeSinceLastCmd;
@@ -17,8 +17,8 @@ typedef struct
 void updateBufCounter(scoreBuffer *buf);
 uint8_t getBufRemainingSize(scoreBuffer *buf);
 bool isBufFull(scoreBuffer *buf);
-void addNoteToBuf(scoreBuffer *buf, noteCommand *note);
+void addNoteToBuf(scoreBuffer *buf, noteCmd *note);
 bool isCmdAvail(scoreBuffer *buf);
-void getCmdFromBuf(scoreBuffer *buf, noteCommand *note);
+void getCmdFromBuf(scoreBuffer *buf, noteCmd *note);
 
 #endif // SCOREBUF_H

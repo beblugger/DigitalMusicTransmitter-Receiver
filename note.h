@@ -4,14 +4,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+extern bool reSyncFlag;
+// no 0xff is allow to appear in noteCmd, it's used for resync
 typedef struct
 {
-    uint8_t pitch, delay;
-    uint16_t intensity;
-} noteCommand;
+    uint8_t pitch, intensity;
+    uint16_t delay;
+} noteCmd;
 
-void clearNoteCommand(noteCommand *note);
-void setNoteCommand(noteCommand *note, uint8_t pitch, uint8_t delay, uint16_t intensity);
-bool noteCommandAlignedFill(noteCommand *note, uint8_t byte);
+void clearNoteCmd(noteCmd *note);
+void setNoteCmd(noteCmd *note, uint8_t pitch, uint8_t intensity, uint16_t delay);
+bool noteCmdAlignedFill(noteCmd *note, uint8_t byte);
+bool noteCmdSplit(noteCmd *note, uint8_t *byte);
 
 #endif // NOTE_H

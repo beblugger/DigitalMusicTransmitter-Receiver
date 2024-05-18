@@ -7,16 +7,16 @@
 #include "note.h"
 typedef struct
 {
-    noteCommand *noteCmdList;
+    noteCmd *noteCmdList;
     uint32_t maxSize;
     uint32_t cursor;
 } scoreRecorder;
 
-void initScoreRecorder(scoreRecorder *rec, noteCommand *noteCmdList, uint32_t maxSize);
-void recordNoteCmd(scoreRecorder *rec, noteCommand *noteCmd);
+void initScoreRecorder(scoreRecorder *rec, noteCmd *noteCmdList, uint32_t maxSize);
+void recordNoteCmd(scoreRecorder *rec, noteCmd *noteCmd);
 bool isRecFull(scoreRecorder *rec);
 void resetRec(scoreRecorder *rec);
 bool isCmdLeft(scoreRecorder *rec);
-void getNoteCmd(scoreRecorder *rec, noteCommand *noteCmd);
+void getNoteCmd(scoreRecorder *rec, noteCmd *noteCmd);
 
 #endif // SCOREREC_H
