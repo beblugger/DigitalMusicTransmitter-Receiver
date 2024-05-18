@@ -13,6 +13,8 @@
 
 #include "customizedUARTIO.h"
 #include "initialization.h"
+#include "note.h"
+#include "ASynthesis.h"
 
 #define UARTMBaseFreq 2500
 #define SysTickResloution 120
@@ -24,12 +26,14 @@ volatile static VUARTStreamBuffer txBuffer;
 void SysTick_Handler(void);
 void updateK0State(void);
 void updateP0State(void);
+void updateF3State(void);
 
 static uint8_t WhatRxReceiverd[64];
 static uint16_t WhatRxReceiverdIndex = 0;
 static uint8_t counter = 0;
 
-static uint32_t debugpui32Baud, debugpui32Config;
+// static uint32_t debugpui32Baud, debugpui32Config;
+static playerState PF3player;
 
 int main(void)
 {
@@ -41,7 +45,11 @@ int main(void)
     VUARTInitTransmitter(&txBuffer, 1, 1);
     InitSysTick(SystemClkFrequency, UARTMBaseFreq * SysTickResloution);
     InitUART(SystemClkFrequency, UARTMBaseFreq);
-    UARTConfigGetExpClk(UART2_BASE, SystemClkFrequency, &debugpui32Baud, &debugpui32Config);
+    // UARTConfigGetExpClk(UART2_BASE, SystemClkFrequency, &debugpui32Baud, &debugpui32Config);
+
+    clearPlayerState(&PF3player);
+    noteCmd note = {60, 100, 500}; // Example note
+    setCommandNote(&PF3player, &note);
 
     while (true)
     {
@@ -71,6 +79,21 @@ void SysTick_Handler(void)
 {
     updateP0State();
     updateK0State();
+    updateF3State();
+}
+
+void updateF3State(void)
+{
+    static volatile uint32_t time = 0;
+    static volatile bool PF3State = 0;
+    bool PF3StateNew;
+    PF3StateNew = getOutputIntensityBasic(&PF3player, time);
+    if (PF3StateNew != PF3State)
+    {
+        PF3State = PF3StateNew;
+        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, PF3State ? GPIO_PIN_3 : 0);
+    }
+    time++;
 }
 
 void updateP0State(void)
