@@ -9,7 +9,7 @@
 typedef struct
 {
     noteCmd buffer[32];
-#define BUFFER_MASK 31
+#define SCORE_BUFFER_MASK 31
     uint8_t head, tail;
     uint16_t timeSinceLastCmd;
 } scoreBuffer;

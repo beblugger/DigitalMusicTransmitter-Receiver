@@ -123,9 +123,10 @@ void test_maintainPlayerState_should_clear_expired_notes()
 
     clearPlayerState(&player);
     setCommandNote(&player, &note);
-    player.clearCounter[0] = -1; // Simulate an expired note
+    // player.clearCounter[0] = -1; // Simulate an expired note
 
-    maintainPlayerState(&player);
+    for (int i = 0; i < 2048; i++)
+        maintainPlayerState(&player);
 
     TEST_ASSERT_EQUAL_INT(0, player.activatedNoteNum); // The note should be cleared
 }

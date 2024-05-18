@@ -22,7 +22,9 @@
             "scorerec.h": "c",
             "pitchperiod.h": "c",
             "interrupt.h": "c",
-            "uart.h": "c"
+            "uart.h": "c",
+            "scorebuf.h": "c",
+            "uartui.h": "c"
         }
     }
 }
