@@ -15,7 +15,8 @@
             "systick.h": "c",
             "stdint.h": "c",
             "initialization.h": "c",
-            "customizeduartio.h": "c"
+            "customizeduartio.h": "c",
+            "note.h": "c"
         }
     }
 }

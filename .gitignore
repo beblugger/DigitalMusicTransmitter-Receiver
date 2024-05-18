@@ -55,6 +55,7 @@ dkms.conf
 
 Listings/
 Objects/
+temp/
 
 #忽略隐私内容
 
