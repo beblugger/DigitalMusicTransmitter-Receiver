@@ -35,11 +35,12 @@ bool noteCmdAlignedFill(noteCmd *note, uint8_t byte)
     }
     else if (note->delay == 0xffff)
     {
-        note->delay = byte;
-        return !(byte & 0x80);
+        note->delay = byte;    // Fill the lowest byte of delay
+        return !(byte & 0x80); // If the highest bit is 1, return false, means that there are more bytes to fill
     }
     else if (note->delay & 0x0080)
     {
+        // Fill the second byte of delay
         note->delay = (note->delay & 0xff7f) | ((uint16_t)byte << 7);
         return true;
     }
@@ -65,6 +66,7 @@ bool noteCmdSplit(noteCmd *note, uint8_t *byte)
     }
     else if ((uint8_t)note->delay != 0xff)
     {
+        // Split the lowest byte of delay
         *byte = ((uint8_t)note->delay & 0x7f);
         note->delay = note->delay << 1 | 0x00ff;
         if (note->delay == 0x00ff)
@@ -74,12 +76,14 @@ bool noteCmdSplit(noteCmd *note, uint8_t *byte)
         }
         else
         {
+            // Set the highest bit to 1, means that there are more bytes to split
             *byte |= 0x80;
             return false;
         }
     }
     else
     {
+        // Split the second byte of delay
         if (note->delay == 0xffff)
         {
             *byte = 0xff;
