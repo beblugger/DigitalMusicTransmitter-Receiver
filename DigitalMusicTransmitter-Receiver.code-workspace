@@ -11,7 +11,11 @@
             "sysctl.h": "c",
             "pin_map.h": "c",
             "tm1638.h": "c",
-            "debug.h": "c"
+            "debug.h": "c",
+            "systick.h": "c",
+            "stdint.h": "c",
+            "initialization.h": "c",
+            "customizeduartio.h": "c"
         }
     }
 }
