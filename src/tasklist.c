@@ -205,3 +205,40 @@ int main() {
 依赖
 note.h 文件定义了 noteCmd 结构体。确保在使用本库前包含该文件。
 */
+
+/*
+Task 4:
+https://github.com/beblugger/DigitalMusicTransmitter-Receiver/blob/main/src/scorerec.h
+实现这个库或者里面的部分函数：
+## scoreBuf 库文档
+
+**概述：** scoreBuf 库用于管理和处理音符指令的循环缓冲区。它提供了一个 scoreBuffer 结构体来存储音符指令，并包含一系列函数来操作缓冲区，包括更新时间计数器、检查缓冲区状态、添加和获取音符指令。
+
+**数据结构：**
+
+- scoreBuffer 结构体包含以下字段：
+  - buffer: 固定大小的音符指令缓冲区，用于存储音符指令。
+  - head: 缓冲区头指针，指示下一个可用位置用于插入新指令。
+  - tail: 缓冲区尾指针，指示下一个要读取的指令位置。
+  - timeSinceLastCmd: 自上次指令以来经过的时间，以某种格式记录。
+
+**函数接口：**
+
+1. `void updateBufCounter(scoreBuffer *buf)`: 更新缓冲区计数器，记录自上次指令以来经过的时间。
+
+2. `uint8_t getBufRemainingSize(scoreBuffer *buf)`: 获取缓冲区剩余空间大小。
+
+3. `bool isBufFull(scoreBuffer *buf)`: 检查缓冲区是否已满。
+
+4. `void addNoteToBuf(scoreBuffer *buf, noteCmd *note)`: 将音符指令添加到缓冲区。
+
+5. `bool isCmdAvail(scoreBuffer *buf)`: 检查是否有可用的指令。即检查最新的指令的delay是否小于等于 timeSinceLastCmd。
+
+6. `void getCmdFromBuf(scoreBuffer *buf, noteCmd *note)`: 从缓冲区中获取指令，并将其存储在给定的 noteCmd 结构体中。之后head指针移动到下一个指令,并且更新时间计数器timeSinceLastCmd。
+
+**注意事项：**
+
+- updateBufCounter 函数用于更新时间计数器，以记录自上次指令以来经过的时间。
+- head 和 tail 指针分别用于插入和读取指令，请确保了解它们的功能，并正确使用它们。
+- 在使用缓冲区函数时，请注意检查缓冲区是否已满或是否有可用的指令，以避免意外行为。
+*/
