@@ -10,7 +10,7 @@ void clearPlayerState(playerState *player)
 
 void setCommandNote(playerState *player, noteCmd *noteCmd)
 {
-    static bool presentNoteFlag = false;
+    bool presentNoteFlag = false;
     uint8_t i = 0, j = 0;
     // Scan if the note is already in the list.
     for (i = 0; i < player->activatedNoteNum; i++)
@@ -91,7 +91,7 @@ void maintainPlayerState(playerState *player)
     uint8_t i = 0, j = 0;
     for (i = 0; i < player->activatedNoteNum; i++)
     {
-        while (player->clearCounter[i] <= 0)
+        while (i < player->activatedNoteNum && player->clearCounter[i] <= 0)
         {
             for (j = i; j < player->activatedNoteNum - 1; j++)
             {
