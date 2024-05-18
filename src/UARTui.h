@@ -4,6 +4,22 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define TRANSMITTER_CMD_MASK 0b11000000
+#define RECEIVER_CMD_MASK 0b10000000
+#define ERROR_CMD_MASK 0b00000000
+
+// 定义命令字节
+#define SET_SONG_CMD 0b11000000
+#define PAUSE_SONG_CMD 0b11001000
+#define RESUME_SONG_CMD 0b11010000
+#define FM_TRANSMITTER_CMD 0b11011000
+#define BUZZER_CMD 0b11100000
+#define RECORD_CMD 0b10000000
+#define PLAYRECORD_CMD 0b10001000
+#define PLAYFM_CMD 0b10010000
+#define ERROR_CMD 0b00111111
+#define NO_CMD 0b00000000
+
 uint8_t processUARTInput(void);
 uint8_t analyzeCommand(char *command);
 

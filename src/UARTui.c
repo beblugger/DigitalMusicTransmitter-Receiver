@@ -8,8 +8,9 @@
 uint8_t analyzeCommandReceiver(char *command);
 uint8_t analyzeCommandTransmitter(char *command);
 uint8_t analyzeCommand(char *command);
+uint8_t customAtoi(const char *str);
 
-void UARTStringPut(uint32_t ui32Base, char *cMessage)
+void UARTStringPut(uint32_t ui32Base, const char *cMessage)
 {
     while (*cMessage != '\0')
     {
@@ -27,14 +28,14 @@ uint8_t processUARTInput(void)
     static uint8_t bufferIndex = 0;
     static uint8_t command = 0;
 
-    while (UARTCharsAvail(UART2_BASE))
+    while (UARTCharsAvail(UART0_BASE))
     {
         if (bufferIndex >= 14)
         {
             bufferIndex = 0;
-            UARTStringPut(UART2_BASE, longCommand);
+            UARTStringPut(UART0_BASE, longCommand);
         }
-        buffer[bufferIndex] = UARTCharGet(UART2_BASE);
+        buffer[bufferIndex] = UARTCharGet(UART0_BASE);
         bufferIndex++;
         if (buffer[bufferIndex - 1] == '\n' || buffer[bufferIndex - 1] == '\r')
         {
@@ -49,29 +50,13 @@ uint8_t processUARTInput(void)
             command = analyzeCommand(buffer);
             if (command == 0b00111111)
             {
-                UARTStringPut(UART2_BASE, errorCommand);
+                UARTStringPut(UART0_BASE, errorCommand);
             }
             return command;
         }
     }
     return 0;
 }
-
-#define TRANSMITTER_CMD_MASK 0b11000000
-#define RECEIVER_CMD_MASK 0b10000000
-#define ERROR_CMD_MASK 0b00000000
-
-// 定义命令字节
-#define SET_SONG_CMD 0b11000000
-#define PAUSE_SONG_CMD 0b11001000
-#define RESUME_SONG_CMD 0b11010000
-#define FM_TRANSMITTER_CMD 0b11011000
-#define BUZZER_CMD 0b11100000
-#define RECORD_CMD 0b10000000
-#define PLAYRECORD_CMD 0b10001000
-#define PLAYFM_CMD 0b10010000
-#define ERROR_CMD 0b00111111
-#define NO_CMD 0b00000000
 
 uint8_t analyzeCommand(char *command)
 {
@@ -93,7 +78,7 @@ uint8_t analyzeCommand(char *command)
         {
             return ERROR_CMD;
         }
-        int songNumber = atoi(token);
+        uint8_t songNumber = customAtoi(token);
         return SET_SONG_CMD | (songNumber & 0b00000111);
     }
     else if (strcmp(token, "pause") == 0)
@@ -111,7 +96,7 @@ uint8_t analyzeCommand(char *command)
         {
             return ERROR_CMD;
         }
-        int transmitterState = atoi(token);
+        uint8_t transmitterState = customAtoi(token);
         return FM_TRANSMITTER_CMD | ((transmitterState == 1) ? 0b000001 : 0);
     }
     else if (strcmp(token, "buzzer") == 0)
@@ -121,7 +106,7 @@ uint8_t analyzeCommand(char *command)
         {
             return ERROR_CMD;
         }
-        int buzzerState = atoi(token);
+        uint8_t buzzerState = customAtoi(token);
         return BUZZER_CMD | ((buzzerState == 1) ? 0b000001 : 0);
     }
     else if (strcmp(token, "record") == 0)
@@ -131,7 +116,7 @@ uint8_t analyzeCommand(char *command)
         {
             return ERROR_CMD;
         }
-        int recordState = atoi(token);
+        uint8_t recordState = customAtoi(token);
         return RECORD_CMD | ((recordState == 1) ? 0b000001 : 0);
     }
     else if (strcmp(token, "playrecord") == 0)
@@ -146,4 +131,25 @@ uint8_t analyzeCommand(char *command)
     {
         return ERROR_CMD;
     }
+}
+
+uint8_t customAtoi(const char *str)
+{
+    uint8_t result = 0;
+    uint8_t i = 0;
+
+    // 处理空格
+    while (str[i] == ' ')
+    {
+        i++;
+    }
+
+    // 转换数字
+    while (str[i] >= '0' && str[i] <= '9')
+    {
+        result = result * 10 + (str[i] - '0');
+        i++;
+    }
+
+    return result;
 }

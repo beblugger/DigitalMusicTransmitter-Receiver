@@ -25,7 +25,10 @@
             "uart.h": "c",
             "scorebuf.h": "c",
             "uartui.h": "c",
-            "stdbool.h": "c"
+            "stdbool.h": "c",
+            "scmychineseheart.h": "c",
+            "transmitter.h": "c",
+            "hw_types.h": "c"
         }
     }
 }

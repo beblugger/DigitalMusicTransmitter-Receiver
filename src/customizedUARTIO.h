@@ -42,7 +42,7 @@ void VUARTWriteByteToTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_
 uint8_t VUARTReadBitFromTransmitter(volatile VUARTStreamBuffer *tx);
 static volatile uint32_t *GetBitBandAlias(volatile uint32_t address, volatile uint8_t bit);
 bool VUARTIsBufferEmpty(volatile uint32_t head, volatile uint32_t tail);
-uint32_t VUARTGETBufferRemainingSize(volatile uint32_t head, volatile uint32_t tail);
+uint32_t VUARTGetBufferRemainingSize(volatile uint32_t head, volatile uint32_t tail);
 static uint8_t calculateParity(volatile uint8_t byte);
 static void aliasPointerIncrease(volatile uint32_t *pointer);
 bool VUARTIsAbleToWriteToBuffer(volatile VUARTStreamBuffer *tx);
@@ -65,7 +65,7 @@ void VUARTInitTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_t stopB
 
 void VUARTAddStopBit(volatile VUARTStreamBuffer *tx, volatile uint8_t stopBits)
 {
-    if (VUARTGETBufferRemainingSize(tx->head, tx->tail) < stopBits)
+    if (VUARTGetBufferRemainingSize(tx->head, tx->tail) < stopBits)
     {
         return;
     }
@@ -79,7 +79,7 @@ void VUARTAddStopBit(volatile VUARTStreamBuffer *tx, volatile uint8_t stopBits)
 // 发射器：向缓冲区写入数据，以字节为单位
 void VUARTWriteByteToTransmitter(volatile VUARTStreamBuffer *tx, volatile uint8_t data)
 {
-    if (VUARTGETBufferRemainingSize(tx->head, tx->tail) < 9 + tx->stopBits + tx->parityBits)
+    if (VUARTGetBufferRemainingSize(tx->head, tx->tail) < 9 + tx->stopBits + tx->parityBits)
     {
         // 处理缓冲区满的情况
         return;
@@ -139,7 +139,7 @@ bool VUARTIsBufferEmpty(volatile uint32_t head, volatile uint32_t tail)
 }
 
 // 获取缓冲区剩余大小, 以bit为单位
-uint32_t VUARTGETBufferRemainingSize(volatile uint32_t head, volatile uint32_t tail)
+uint32_t VUARTGetBufferRemainingSize(volatile uint32_t head, volatile uint32_t tail)
 {
     if (head <= tail)
     {
@@ -150,7 +150,7 @@ uint32_t VUARTGETBufferRemainingSize(volatile uint32_t head, volatile uint32_t t
 
 bool VUARTIsAbleToWriteToBuffer(volatile VUARTStreamBuffer *tx)
 {
-    return VUARTGETBufferRemainingSize(tx->head, tx->tail) >= 9 + tx->stopBits + tx->parityBits;
+    return VUARTGetBufferRemainingSize(tx->head, tx->tail) >= 9 + tx->stopBits + tx->parityBits;
 }
 
 // 计算奇偶校验位
