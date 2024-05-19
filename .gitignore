@@ -61,6 +61,7 @@ testbuild/
 #忽略隐私内容
 
 *.uvguix.*
-*.uvgui.bfg*
+*.uvgui.*
 *.uvoptx
 *.uvprojx
+*.uvmpw
