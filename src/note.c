@@ -4,8 +4,8 @@ bool reSyncFlag;
 void clearNoteCmd(noteCmd *note)
 {
     note->pitch = 0xff;
-    note->delay = 0xffff;
     note->intensity = 0xff;
+    note->delay = 0xffff;
 }
 
 void setNoteCmd(noteCmd *note, uint8_t pitch, uint8_t intensity, uint16_t delay)
@@ -78,6 +78,8 @@ bool noteCmdSplit(noteCmd *note, uint8_t *byte)
         {
             // Set the highest bit to 1, means that there are more bytes to split
             *byte |= 0x80;
+            if (*byte == 0xff)
+                *byte = 0xfe;
             return false;
         }
     }

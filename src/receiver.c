@@ -1,7 +1,10 @@
 #include "receiver.h"
 
-#define UARTMBaseFreq 2500
+#define UARTMBaseFreq 2000
 #define SysTickResloution 120
+#define _1ms UARTMBaseFreq *SysTickResloution / 1000
+#define RESLUTTION_TIME 10
+#define _2s UARTMBaseFreq *SysTickResloution * 2
 
 static uint32_t SystemClkFrequency = 0;
 
@@ -16,13 +19,16 @@ static volatile bool singalSource; // 0: FM, 1: recorder
 static volatile bool syncState;
 
 static volatile uint32_t _2sCounter = 0;
-#define _2s 600000
+
+// static char debugString[100] = "Debug: Received command: 000\n";
 
 int main(void)
 {
     static noteCmd tmpNote;
     static uint8_t command;
     syncState = false;
+    static volatile bool noteFilled = false;
+    clearNoteCmd(&tmpNote);
     // initalize
     InitGPIO();
     SystemClkFrequency = SysCtlClockFreqSet((SYSCTL_XTAL_25MHZ | SYSCTL_OSC_MAIN |
@@ -36,33 +42,59 @@ int main(void)
 
     while (true)
     {
-        if (reSyncFlag)
+        if (singalSource == 0)
         {
-            _2sCounter = 0;
-            reSyncFlag = false;
-            syncState = true;
-            UARTStringPut(UART0_BASE, "Sync received!\n");
-        }
-        if (_2sCounter >= _2s)
-        {
-            _2sCounter = 0;
-            syncState = false;
-            UARTStringPut(UART0_BASE, "Sync timeout.\n");
+            if (reSyncFlag)
+            {
+                _2sCounter = 0;
+                reSyncFlag = false;
+                if (!syncState)
+                {
+                    clearPlayerState(&PF3player);
+                }
+                syncState = true;
+                UARTStringPut(UART0_BASE, "Sync received!\n");
+            }
+            if (_2sCounter >= _2s)
+            {
+                _2sCounter = 0;
+                syncState = false;
+                UARTStringPut(UART0_BASE, "Sync timeout.\n");
+                initBuf(&PF3Buffer);
+            }
         }
 
         switch (singalSource)
         {
         case 0:
-            if (UARTCharsAvail(UART2_BASE) && !isBufFull(&PF3Buffer))
+            if (syncState)
             {
-                command = UARTCharGet(UART2_BASE);
-                if (noteCmdAlignedFill(&tmpNote, command) && syncState)
+                if (UARTCharsAvail(UART2_BASE) && !noteFilled)
+                {
+                    command = UARTCharGet(UART2_BASE);
+                    // debugString[25] = command / 100 + '0';
+                    // debugString[26] = (command / 10) % 10 + '0';
+                    // debugString[27] = command % 10 + '0';
+                    // UARTStringPut(UART0_BASE, debugString);
+                    noteFilled = noteCmdAlignedFill(&tmpNote, command);
+                }
+                if (noteFilled && !isBufFull(&PF3Buffer))
                 {
                     addNoteToBuf(&PF3Buffer, &tmpNote);
                     if (recordState && recorder.maxSize < 256)
                     {
                         recordNoteCmd(&recorder, &tmpNote);
                     }
+                    clearNoteCmd(&tmpNote);
+                    noteFilled = false;
+                }
+            }
+            else
+            {
+                if (UARTCharsAvail(UART2_BASE))
+                {
+                    command = UARTCharGet(UART2_BASE);
+                    noteFilled = noteCmdAlignedFill(&tmpNote, command);
                 }
             }
             break;
@@ -89,6 +121,7 @@ int main(void)
                 }
                 break;
             case PLAYRECORD_CMD:
+                syncState = true;
                 singalSource = 1;
                 replay(&PF3Buffer, &PF3player, &recorder);
                 break;
@@ -111,19 +144,17 @@ int main(void)
 void SysTick_Handler(void)
 {
     static volatile uint16_t _1msCounter = 0;
-#define _1ms 300
-    static volatile uint8_t _30000HzCounter = 0;
-#define _30000Hz 10
+    static volatile uint8_t resCounter = 0;
     static volatile noteCmd tmpNote;
-    _30000HzCounter++;
+    resCounter++;
     _1msCounter++;
     _2sCounter++;
 
     updateK0State();
 
-    if (_30000HzCounter >= _30000Hz)
+    if (resCounter >= RESLUTTION_TIME)
     {
-        _30000HzCounter = 0;
+        resCounter = 0;
         updateF3State();
     }
     if (_1msCounter >= _1ms)
@@ -136,6 +167,11 @@ void SysTick_Handler(void)
             getCmdFromBuf(&PF3Buffer, &tmpNote);
             setCommandNote(&PF3player, &tmpNote);
         }
+        if (!syncState && PF3Buffer.head == PF3Buffer.tail)
+        {
+            clearPlayerState(&PF3player);
+        }
+        maintainPlayerState(&PF3player);
     }
 }
 
@@ -158,10 +194,6 @@ void updateF3State(void)
     static volatile uint32_t time = 0;
     static volatile bool PF3State = 0;
     static bool PF3StateNew;
-    if (!syncState)
-    {
-        return;
-    }
     PF3StateNew = getOutputIntensityBasic(&PF3player, time);
     if (PF3StateNew != PF3State)
     {
@@ -171,10 +203,11 @@ void updateF3State(void)
     time++;
 }
 
+static volatile int16_t activatedLength = 0;
+static volatile uint16_t counterSinceLastUpdateK0 = 0;
+
 void updateK0State(void)
 {
-    static volatile int16_t activatedLength = 0;
-    static volatile uint16_t counterSinceLastUpdateK0 = 0;
     // convert UARTM -> UART, P1 -> K0
 
     // After waiting too long for a bit, put 0 to K0
