@@ -1,7 +1,10 @@
 #include "transmitter.h"
 
-#define UARTMBaseFreq 2500
+#define UARTMBaseFreq 2000
 #define SysTickResloution 120
+#define _1ms UARTMBaseFreq *SysTickResloution / 1000
+#define RESLUTTION_TIME 10
+#define _1s UARTMBaseFreq *SysTickResloution
 
 static uint32_t SystemClkFrequency = 0;
 
@@ -31,7 +34,7 @@ int main(void)
     InitUART(SystemClkFrequency, UARTMBaseFreq);
     ResumePause = true;
     FMState = true;
-    PF3State = true;
+    PF3State = false;
     replay(myChineseHeart, &PF3Buffer, &FMBuffer, &PF3player, &myChineseHeartRecorder, &myChineseHeartRecFM, 110);
 
     while (true)
@@ -86,22 +89,19 @@ int main(void)
 void SysTick_Handler(void)
 {
     static volatile uint16_t _1msCounter = 0;
-#define _1ms 300
-    static volatile uint8_t _30000HzCounter = 0;
-#define _30000Hz 10
+    static volatile uint8_t resCounter = 0;
     static volatile uint32_t _1sCounter = 0;
-#define _1s 300000
     static volatile noteCmd tmpNote;
-    _30000HzCounter++;
+    resCounter++;
     _1msCounter++;
     _1sCounter++;
 
     updateP0State();
     // updateK0State();
 
-    if (_30000HzCounter >= _30000Hz)
+    if (resCounter >= RESLUTTION_TIME)
     {
-        _30000HzCounter = 0;
+        resCounter = 0;
         if (PF3State && ResumePause)
             updateF3State();
     }
@@ -245,8 +245,10 @@ void writeNoteToTransmitter(volatile VUARTStreamBuffer *tx, noteCmd *note)
         return;
     }
     uint8_t byte;
-    while (!noteCmdSplit(note, &byte))
+    bool finished = false;
+    while (!finished)
     {
+        finished = noteCmdSplit(note, &byte);
         VUARTWriteByteToTransmitter(tx, byte);
     }
 }

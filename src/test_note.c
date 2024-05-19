@@ -174,10 +174,10 @@ void test_noteCmdSplit()
     }
 
     // Test case 5: note->delay & 0x0080 is true
-    note.delay = 0x1001;
+    note.delay = 1200;
     result = noteCmdSplit(&note, &byte);
     result2 = noteCmdSplit(&note, &byte2);
-    if (byte == 0x81 && result == false && byte2 == 0x20 && result2 == true)
+    if (byte == 176 && result == false && byte2 == 9 && result2 == true)
     {
         printf("noteCmdSplit test case 5 passed.\n");
     }

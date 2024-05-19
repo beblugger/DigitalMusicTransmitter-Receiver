@@ -5,7 +5,7 @@
 
 #define noteListSize 8
 // Define the timeout for clearing the note. It should be in range of int16_t.
-#define TIMEOUT 1024
+#define TIMEOUT 4096
 /**
  * @brief Represents the state of a player.
  *
