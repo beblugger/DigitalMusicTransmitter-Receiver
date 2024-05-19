@@ -8,7 +8,7 @@
 #define RECEIVER_CMD_MASK 0b10000000
 #define ERROR_CMD_MASK 0b00000000
 
-// 定义命令字节
+// Command Byte Masks
 #define SET_SONG_CMD 0b11000000
 #define PAUSE_SONG_CMD 0b11001000
 #define RESUME_SONG_CMD 0b11010000
@@ -20,8 +20,27 @@
 #define ERROR_CMD 0b00111111
 #define NO_CMD 0b00000000
 
+/**
+ * @brief Processes the UART input and returns the command byte.
+ *
+ * @return The command byte received from UART input.
+ */
 uint8_t processUARTInput(void);
+
+/**
+ * @brief Analyzes the command string and returns the corresponding command byte.
+ *
+ * @param command The command string to be analyzed.
+ * @return The command byte corresponding to the command string.
+ */
 uint8_t analyzeCommand(char *command);
+
+/**
+ * @brief Sends a string message through UART.
+ *
+ * @param ui32Base The base address of the UART module.
+ * @param cMessage The string message to be sent.
+ */
 void UARTStringPut(uint32_t ui32Base, const char *cMessage);
 
 #endif /* UARTUI_H */
